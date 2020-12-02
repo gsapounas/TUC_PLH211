@@ -1,0 +1,95 @@
+#!/bin/bash    
+
+input=$1
+
+numoflines=$(cat $input | wc -l )
+
+numoflines=$((numoflines+1))
+
+
+
+while read line || [ -n "$line" ]; do 
+ 
+  #Reads data from input file and stores it in proper variables
+
+  teams=$( echo "$line" |cut -d\: -f1 )
+  score=$( echo "$line" |cut -d\: -f2 )
+  team1=$( echo "$teams" |cut -d\- -f1 )
+  team2=$( echo "$teams" |cut -d\- -f2 )
+  score_team1=$( echo "$score" |cut -d\- -f1 )
+  score_team2=$( echo "$score" |cut -d\- -f2 )
+
+  if (( $(echo "$score_team1 > $score_team2") ))
+  then
+  	
+  	points1=$((points1+3))
+  	points2=$((points2+0))
+  	
+
+  elif (( $(echo "$score_team1 == $score_team2") ))
+  then
+
+  	points1=$((points1+1))
+  	points2=$((points2+1))
+
+  else
+
+  	points1=$((points1+0))
+  	points2=$((points2+3))
+  
+  fi
+
+  goals_active1=$((goals_active1 + score_team1))
+  goals_passive1=$((goals_passive1 + score_team2))
+  goals_active2=$((goals_active2 + score_team2))
+  goals_passive2=$((goals_passive2 + score_team1))
+  
+  
+  #Writes variable data to a temporary file
+
+  echo -e $team1'\t'$points1'\t'$goals_active1'\t'$goals_passive1 >> temp
+  echo -e $team2'\t'$points2'\t'$goals_active2'\t'$goals_passive2 >> temp
+  
+  
+
+  points1=0
+  points2=0
+  goals_active1=0
+  goals_passive1=0
+  goals_active2=0
+  goals_passive2=0
+  
+done < $input
+
+  
+  
+#Reads data from temp file, adds points and goals of multiple teams, sorts it numerically and stores it to standings temporary file
+
+echo -e $(awk '{arr[$1]+=$2; arr1[$1]+=$3; arr2[$1]+=$4} END {for (i in arr) {print i " "arr[i]"  "arr1[i]"-"arr2[i]}}' temp | sort -k2 -rn -o standings) >> standings
+
+#Deletes last line of standings file
+
+truncate -s -1 standings
+
+#Sorts standings file numerically first and if there is a tie in points field sorts the teams alphabetically
+
+sort -k 2,2nr -k 1,1 standings -o finalstandings
+
+#Prints data in proper form
+
+i=1
+
+while IFS=$'\t' read -r team points goals_active goals_passive ; do
+
+  echo "$i.  $team $points $goals_active $goals_passive"
+  i=$((i+1))
+
+done < "finalstandings"
+
+#Deletes temporary files used in the software
+
+#cat temp
+
+rm temp
+rm standings
+rm finalstandings

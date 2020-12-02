@@ -1,0 +1,86 @@
+#!/bin/bash 
+
+for input in $*
+do
+
+
+#Finds how many lines in input file
+
+numoflines=$(cat $input | wc -l )
+
+numoflines=$((numoflines+1))
+
+sum_x=0
+sum_y=0
+sum_xy=0
+sum_x2=0
+err=0
+c=1
+
+
+
+while read line || [ -n "$line" ]; do
+ 
+  #Reads the numbers from the textfile
+
+  x=$( echo "$line" |cut -d\: -f1 )
+  y=$( echo "$line" |cut -d\: -f2 )
+    
+  x=`echo "scale=2; $x/1" | bc` 
+  y=`echo "scale=2; $y/1" | bc`
+  xy=`echo "scale=2; $x*$y" | bc`
+  x2=`echo "scale=2; $x*$x" | bc`
+
+  #Finds sumx,sumy, sumxy and symx2
+
+  sum_x=`echo "scale=2; $sum_x+$x" | bc`
+  sum_y=`echo "scale=2; $sum_y+$y" | bc`
+  sum_xy=`echo "scale=2; $sum_xy+$xy" | bc`
+  sum_x2=`echo "scale=2; $sum_x2+$x2" | bc`
+
+
+done < $input
+
+
+
+#Checks if denominator is 0 and calculates what is needed
+
+if (( $(echo "(($numoflines*$sum_x2)-($sum_x*$sum_x))!=0" |bc -l) ))
+  
+  then
+  
+  a=`echo "scale=2; ($numoflines*$sum_xy-$sum_x*$sum_y)/(($numoflines*$sum_x2)-($sum_x*$sum_x))" | bc | sed 's/^\./0./' | sed 's/^\-./-0./'`
+  b=`echo "scale=2; (($sum_y)-($a*$sum_x))/($numoflines)" | bc | sed 's/^\./0./' | sed 's/^\-./-0./'`
+  
+  while read line2 || [ -n "$line2" ]; do
+
+  x1=$( echo "$line2" |cut -d\: -f1 )
+  y1=$( echo "$line2" |cut -d\: -f2 )
+	
+  tmp=`echo "scale=2; ($y1-($a*$x1+$b))*($y1-($a*$x1+$b))" | bc | sed 's/^\./0./' | sed 's/^\-./-0./'`
+  err=`echo "scale=2; $err + $tmp" | bc | sed 's/^\./0./' | sed 's/^\-./-0./'`
+ 
+
+  done < $input
+
+  	
+  
+ else
+
+  #Prints final calculations in proper form if denominator is 0
+
+  tmp=`echo "scale=2; ($y1-($a*$x1+$b))*($y1-($a*$x1+$b))" | bc | sed 's/^\./0./' | sed 's/^\-./-0./'`
+  err=`echo "scale=2; $err + $tmp" | bc | sed 's/^\./0./' | sed 's/^\-./-0./'`
+  
+  echo "File: $input," "a= 1.00" "b= -"$x "c= 0" "err= "$err
+
+  	break
+  
+ fi
+
+#Prints final data in proper form
+
+echo "FILE: $input," "a= "$a "b= "$b "c= "$c "err= "$err
+
+
+done
